@@ -34,12 +34,12 @@ function initialize()
         new Light("drumRight", 53, 54, 55),
         new Light("sideLeft", 63, 64, 65),
         new Light("sideRight", 58, 59, 60),
-        new Light("cabLeftOut", 48,49,50),
-        new Light("cabLeftIn", 45,46,47),
-        new Light("cabRightIn", 42,43,44),
-        new Light("cabRightOut", 39,40,41),
-        new Light("frontLeft", 36,37,38),
-        new Light("frontRight", 33,34,35)
+        new StripLight("cabLeftOut", 48,49,50, 42),
+        new StripLight("cabLeftIn", 45,46,47, 51),
+        new StripLight("cabRightIn", 42,43,44, 60),
+        new StripLight("cabRightOut", 39,40,41, 69),
+        new StripLight("frontLeft", 36,37,38, 78),
+        new StripLight("frontRight", 33,34,35, 33)
     ];
 }
 
@@ -104,59 +104,81 @@ function midiInput(event)
 {
     let messageName = `${event.currentTarget.manufacturer} ${event.currentTarget.name}`
 
-    if (messageName === masterDevice)
+    if (event.data[0] == 144 || event.data[0] == 128)
     {
-        if (event.data[0] == 144 || event.data[0] == 128)
+        if (messageName === masterDevice)
         {
             for (let i = 0; i < lights.length; i++)
             {
                 if (event.data[1] === lights[i].rNote)
                 {
-                    lights[i].r = event.data[2] * 2;
+                    lights[i].setRed(event.data[2] * 2);
                     lights[i].displayColor();
                 }
 
                 if (event.data[1] === lights[i].gNote)
                 {
-                   lights[i].g = event.data[2] * 2;
-                   lights[i].displayColor();
+                    lights[i].setGreen(event.data[2] * 2);
+                    lights[i].displayColor();
                 }
 
                 if (event.data[1] === lights[i].bNote)
                 {
-                    lights[i].b = event.data[2] * 2;
+                    lights[i].setBlue(event.data[2] * 2);
                     lights[i].displayColor();
                 }
             }
         }
-    }
-    else if (messageName === redDevice)
-    {
 
-    }
-    else if (messageName === greenDevice)
-    {
+        else if (messageName === redDevice)
+        {
+            for (let i = 0; i < lights.length; i++)
+            {
+                if (lights[i] instanceof StripLight)
+                {
+                    if (event.data[1] >= lights[i].segStartNote && event.data[1] <= lights[i].segStartNote + 7)
+                    {
+                        let seg = lights[i].getSegment(event.data[1] - lights[i].segStartNote);
+                        seg.setRed(event.data[2] * 2);
+                        seg.displayColor();
+                    }
+                }
+            }
+        }
 
-    }
-    else if (messageName === blueDevice)
-    {
+        else if (messageName === greenDevice)
+        {
+            for (let i = 0; i < lights.length; i++)
+            {
+                if (lights[i] instanceof StripLight)
+                {
+                    if (event.data[1] >= lights[i].segStartNote && event.data[1] <= lights[i].segStartNote + 7)
+                    {
+                        let seg = lights[i].getSegment(event.data[1] - lights[i].segStartNote);
+                        seg.setGreen(event.data[2] * 2);
+                        seg.displayColor();
+                    }
+                }
+            }
 
-    }
+        }
 
+        else if (messageName === blueDevice)
+        {
+            for (let i = 0; i < lights.length; i++)
+            {
+                if (lights[i] instanceof StripLight)
+                {
+                    if (event.data[1] >= lights[i].segStartNote && event.data[1] <= lights[i].segStartNote + 7)
+                    {
+                        let seg = lights[i].getSegment(event.data[1] - lights[i].segStartNote);
+                        seg.setBlue(event.data[2] * 2);
+                        seg.displayColor();
+                    }
+                }
+            }
 
-    if(redDevice === messageName)
-    {
-        console.log(`Red device: ${event.data[0]} ${event.data[1]} ${event.data[2]}`);
-    }
-
-    if(greenDevice === messageName)
-    {
-        console.log(`Green device: ${event.data[0]} ${event.data[1]} ${event.data[2]}`);
-    }
-
-    if(blueDevice === messageName)
-    {
-        console.log(`Blue device: ${event.data[0]} ${event.data[1]} ${event.data[2]}`);
+        }
     }
 }
 
@@ -198,11 +220,97 @@ class Light
         this.element = document.querySelector(`#${name}`);
     }
 
-
-
     displayColor()
     {
         this.element.style.backgroundColor = `rgb(${this.r}, ${this.g}, ${this.b})`;
     }
 
+    setRed(value)
+    {
+        this.r = value;
+    }
+
+    setGreen(value)
+    {
+        this.g = value;
+    }
+
+    setBlue(value)
+    {
+        this.b = value;
+    }
+
+}
+
+
+class StripLight extends Light
+{
+    segments;
+    segStartNote;
+
+    constructor(name, rNote, gNote, bNote, segStartNote)
+    {
+
+        super(name,rNote,gNote,bNote);
+
+        this.segStartNote = segStartNote;
+        this.segments =
+        [
+            new StripSegment(name,1,segStartNote),
+            new StripSegment(name,2,segStartNote+1),
+            new StripSegment(name,3,segStartNote+2),
+            new StripSegment(name,4,segStartNote+3),
+            new StripSegment(name,5,segStartNote+4),
+            new StripSegment(name,6,segStartNote+5),
+            new StripSegment(name,7,segStartNote+6),
+            new StripSegment(name,8,segStartNote+7)
+        ];
+    }
+
+    displayColor()
+    {
+        this.element.style.backgroundColor = `rgb(${this.r}, ${this.g}, ${this.b})`;
+        for (let i = 0; i < this.segments.length; i++)
+        {
+            this.segments[i].displayColor();
+        }
+    }
+
+    getSegment(index)
+    {
+        return this.segments[index];
+    }
+
+    setRed(value)
+    {
+        for (let i = 0; i < this.segments.length; i++)
+        {
+           this.segments[i].setRed(value);
+        }
+    }
+
+    setGreen(value)
+    {
+        for (let i = 0; i < this.segments.length; i++)
+        {
+           this.segments[i].setGreen(value);
+        }
+    }
+
+    setBlue(value)
+    {
+        for (let i = 0; i < this.segments.length; i++)
+        {
+           this.segments[i].setBlue(value);
+        }
+    }
+}
+
+class StripSegment extends Light
+{
+    constructor(name, index, note)
+    {
+        super(name,note,note,note);
+        this.element = document.querySelector(`#${name}${index}`);
+    }
 }
