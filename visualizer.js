@@ -7,16 +7,7 @@ let redDevice;
 let blueDevice;
 let greenDevice;
 
-let drumLeft;
-let drumRight;
-let cabLeftIn;
-let cabLeftOut;
-let cabRightIn;
-let cabRightOut;
-let sideLeft;
-let sideRight;
-let frontLeft;
-let frontRight;
+let lights;
 
 document.addEventListener("DOMContentLoaded",initialize);
 
@@ -37,17 +28,19 @@ function initialize()
 
     navigator.requestMIDIAccess().then(success,failure);
 
-
-    drumLeft = document.querySelector("#drumLeft");
-    drumRight = document.querySelector("#drumRight");
-    cabLeftIn = document.querySelector("#cabLeftIn");
-    cabLeftOut = document.querySelector("#cabLeftOut");
-    cabRightIn = document.querySelector("#cabRightIn");
-    cabRightOut = document.querySelector("#cabRightOut");
-    sideLeft = document.querySelector("#sideLeft");
-    sideRight = document.querySelector("#sideRight");
-    frontLeft = document.querySelector("#frontLeft");
-    frontRight = document.querySelector("#frontRight");
+    lights =
+    [
+        new Light("drumLeft", 68, 69, 70),
+        new Light("drumRight", 53, 54, 55),
+        new Light("sideLeft", 63, 64, 65),
+        new Light("sideRight", 58, 59, 60),
+        new Light("cabLeftOut", 48,49,50),
+        new Light("cabLeftIn", 45,46,47),
+        new Light("cabRightIn", 42,43,44),
+        new Light("cabRightOut", 39,40,41),
+        new Light("frontLeft", 36,37,38),
+        new Light("frontRight", 33,34,35)
+    ];
 }
 
 
@@ -110,34 +103,44 @@ function updateLists(event)
 function midiInput(event)
 {
     let messageName = `${event.currentTarget.manufacturer} ${event.currentTarget.name}`
-    let red = 0;
-    let green = 0;
-    let blue = 0;
-    let current;
 
-    if (masterDevice === messageName)
+    if (messageName === masterDevice)
     {
         if (event.data[0] == 144 || event.data[0] == 128)
         {
-            switch(event.data[1])
+            for (let i = 0; i < lights.length; i++)
             {
-                case 68:
-                    current = parseColor(drumLeft.style.backgroundColor);
-                    red = event.data[2] * 2;
-                    drumLeft.style.backgroundColor = `rgb(${red},${current[1]},${current[2]})`;
-                    break;
-                case 69:
-                    green = event.data[2] * 2;
-                    drumLeft.style.backgroundColor = `rgb(${red},${green},${blue})`;
-                    break;
-                case 70:
-                    blue = event.data[2] * 2;
-                    drumLeft.style.backgroundColor = `rgb(${red},${green},${blue})`;
-                    break;
-                default:
-                    break;
+                if (event.data[1] === lights[i].rNote)
+                {
+                    lights[i].r = event.data[2] * 2;
+                    lights[i].displayColor();
+                }
+
+                if (event.data[1] === lights[i].gNote)
+                {
+                   lights[i].g = event.data[2] * 2;
+                   lights[i].displayColor();
+                }
+
+                if (event.data[1] === lights[i].bNote)
+                {
+                    lights[i].b = event.data[2] * 2;
+                    lights[i].displayColor();
+                }
             }
         }
+    }
+    else if (messageName === redDevice)
+    {
+
+    }
+    else if (messageName === greenDevice)
+    {
+
+    }
+    else if (messageName === blueDevice)
+    {
+
     }
 
 
@@ -169,4 +172,37 @@ function parseColor(colorString)
     color = colorString.substring(4,colorString.length-1);
     colorArray = color.split(', ');
     return colorArray;
+}
+
+
+class Light
+{
+    name;
+    element;
+    r;
+    g;
+    b;
+    rNote;
+    gNote;
+    bNote;
+
+    constructor(name, rNote, gNote, bNote)
+    {
+        this.name = name;
+        this.r = 0;
+        this.g = 0;
+        this.b = 0;
+        this.rNote = rNote;
+        this.gNote = gNote;
+        this.bNote = bNote;
+        this.element = document.querySelector(`#${name}`);
+    }
+
+
+
+    displayColor()
+    {
+        this.element.style.backgroundColor = `rgb(${this.r}, ${this.g}, ${this.b})`;
+    }
+
 }
